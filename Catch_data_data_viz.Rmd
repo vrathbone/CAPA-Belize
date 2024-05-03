@@ -9,29 +9,36 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+library(readxl)
+library(janitor)
 library(tidyverse)
 library(terra)
 library(here)
 library(dplyr)
 library(stringr)
 library(raster)
-library(maptools)
+#library(maptools)
 library(tmap)
 library(tmaptools)
 library(ggplot2)
-library(rgdal)
+#library(rgdal)
 library(usethis)
 library(kableExtra)
 library(knitr)
 library(sp)
 library(lwgeom)
-library(rgeos)
+#library(rgeos)
 library(sf)
 library(RColorBrewer)
+#display.brewer.all()
+library(wesanderson)
+#names(wes_palettes)
+#wes_palette(name, number of colors desired, type = c("discrete", "continuous"))
+library(ggsci)
 
 ```
 
-Read in data
+Conch Catch data viz
 ```{r}
 
 #load in catch data
@@ -138,7 +145,7 @@ GRMR_conch_bar_plot <- ggplot(GRMR_conch_weight_effort, aes(x = Year, y = effici
   ) +
   geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "red") +
   geom_text(aes(label = round(efficiency, 2)), vjust = -0.5, hjust = 0.5, size = 4)+
-  scale_fill_manual(values = national_parks_palette) +
+  #scale_fill_manual(values = national_parks_palette) +
   scale_y_continuous(expand = c(0,0),
                      lim = c(0, 50),
                      breaks = c(0, 10, 20, 30, 40, 50)) +
@@ -149,6 +156,7 @@ print(GRMR_conch_bar_plot)
 
 
 
+###### By Total Catch ######
 
 
 
@@ -157,3 +165,364 @@ print(GRMR_conch_bar_plot)
 
 ```
 
+Lobster Catch data viz
+```{r}
+
+#load in catch data
+GRMR_lobster_catch_2004_2022_ALL <- read.csv("/Users/Vanessa/Dropbox/CAPA - Belize/data/Catch_data/lobster/GRMR Lobster Catch Data 2004-2022 tidy.csv")
+head(GRMR_lobster_catch_2004_2022_ALL)
+
+##Isolate the location, weight and hours fished
+GRMR_lobster_catch_2004_2022_ALL_tidy <- GRMR_lobster_catch_2004_2022_ALL %>% 
+  dplyr::select(Year, Hours.fished, TL..mm.) %>% 
+  filter(!is.na(Year)) %>% 
+  filter(!is.na(TL..mm.))
+
+
+#bar chart of weight by effort by year
+GRMR_lobster_length_effort <- GRMR_lobster_catch_2004_2022_ALL_tidy %>% 
+  group_by(Year)%>%
+  summarize(
+    sum_length = sum(TL..mm., na.rm = TRUE),
+    sum_effort = sum(Hours.fished, na.rm = TRUE)
+  ) %>%
+  mutate(efficiency = sum_length/sum_effort)
+
+# Convert "Year" to a factor
+GRMR_lobster_length_effort$Year <- as.factor(GRMR_lobster_length_effort$Year)
+
+# Calculate the regression results
+lm_model <- lm(efficiency ~ as.numeric(Year), data = GRMR_lobster_length_effort)
+
+# Choose colors from the 'Set2' palette with 9 distinct colors
+national_parks_palette <- brewer.pal(12, "Set3")[1:16]
+
+# Create a bar chart of efficiency by year with bars colored by year
+GRMR_lobster_bar_plot <- ggplot(GRMR_lobster_length_effort, aes(x = Year, y = efficiency, fill = Year,)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Year",
+    y = "Total lobster length(mm) per hour fished",
+    title = "GRMR Lobster Catch Efficiency by Year (2004-2022)"
+  ) +
+  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "red") +
+  geom_text(aes(label = round(efficiency, 2)), vjust = -0.5, hjust = 0.5, size = 3)+
+  scale_y_continuous(expand = c(0,0),
+                     lim = c(0, 35),
+                     breaks = c(0, 5, 10, 15, 20, 25, 30, 35)) +
+  guides(fill = FALSE)
+
+# Display the bar chart
+print(GRMR_lobster_bar_plot)
+
+
+###### By Total Catch ######
+
+
+```
+
+Finfish Catch data viz
+```{r}
+
+#load in catch data
+ALL_finfish_catch_2004_2022 <- read.csv("/Users/Vanessa/Dropbox/CAPA - Belize/data/Catch_data/fish/ALL_Finfish_Catch_Data_2004_2022_tidy.csv")
+head(ALL_finfish_catch_2004_2022)
+
+# Convert "Year" to a factor and that all weights are numeric
+ALL_finfish_catch_2004_2022$Year <- as.factor(ALL_finfish_catch_2004_2022$Year)
+ALL_finfish_catch_2004_2022$Weight..g. <- as.numeric(ALL_finfish_catch_2004_2022$Weight..g.)
+
+##Isolate the location, weight and hours fished
+ALL_finfish_catch_2004_2022_ALL_tidy <- ALL_finfish_catch_2004_2022 %>% 
+  dplyr::select(Year, Hours.fished, Weight..g.) %>% 
+  filter(!is.na(Year)) %>% 
+  filter(!is.na(Weight..g.))
+
+#bar chart of weight by effort by year
+ALL_finfish_weight_effort <- ALL_finfish_catch_2004_2022_ALL_tidy %>% 
+  group_by(Year)%>%
+  summarize(
+    sum_weight = sum(Weight..g., na.rm = TRUE),
+    sum_effort = sum(Hours.fished, na.rm = TRUE)
+  ) %>%
+  mutate(efficiency = sum_weight/sum_effort)
+
+
+# Calculate the regression results
+lm_model <- lm(efficiency ~ as.numeric(Year), data = ALL_finfish_weight_effort)
+
+# Choose colors from the 'Set2' palette with 9 distinct colors
+#national_parks_palette <- brewer.pal(12, "Set3")[1:16]
+
+# Create a bar chart of efficiency by year with bars colored by year
+ALL_finfish_bar_plot <- ggplot(ALL_finfish_weight_effort, aes(x = Year, y = efficiency, fill = Year,)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Year",
+    y = "Total fish weight(g) per hour fished",
+    title = "All Finfish Catch Efficiency by Year (2004-2022)"
+  ) +
+  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "red") +
+  geom_text(aes(label = round(efficiency, 2)), vjust = -0.5, hjust = 0.5, size = 3)+
+  scale_y_continuous(expand = c(0,0),
+                     lim = c(0, 400),
+                     breaks = c(0, 100, 200, 300, 400)) +
+  guides(fill = FALSE)
+
+# Display the bar chart
+print(ALL_finfish_bar_plot)
+
+
+###Finfish total catch###
+##Isolate the location, year, weight and hours fished
+ALL_finfish_catch_2004_2022_LOCATION <- ALL_finfish_catch_2004_2022 %>% 
+  dplyr::select(Year, Location, Hours.fished, Weight..g.) %>% 
+  filter(!is.na(Year)) %>% 
+  filter(!is.na(Weight..g.)) 
+  #filter(Location %in% c("Glovers", "SWCMR", "SW Channel"))
+
+#bar chart of weight by effort by year
+ALL_finfish_YEAR <- ALL_finfish_catch_2004_2022_LOCATION %>% 
+  group_by(Year)%>%
+  summarize(
+    sum_weight = sum(Weight..g., na.rm = TRUE))
+
+
+###### Catch by MPA ######
+ALL_finfish_catch_2004_2022_LOCATION <- ALL_finfish_catch_2004_2022 %>% 
+  dplyr::select(Year, Location, Hours.fished, Weight..g.) %>% 
+  filter(!is.na(Year)) %>% 
+  filter(!is.na(Weight..g.)) %>% 
+  group_by(Year, Location) %>% 
+  summarize(
+    sum_weight = sum(Weight..g., na.rm = TRUE))
+
+
+
+
+```
+
+Meteorologist SST By month and year
+```{r}
+
+#load SST monthly data and tidy
+SST_monthly <- read.csv("/Users/Vanessa/Dropbox/CAPA/Data/SST/SST_monthly_cleaned.csv")
+head(SST_monthly)
+
+SST_monthly <- separate(SST_monthly, Date, into = c("Month", "Year"), sep = "-")
+month_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+SST_monthly <- arrange(SST_monthly, Year, factor(Month, levels = month_order))
+
+SST_monthly_2012_2019 <- SST_monthly %>% 
+  filter(Year >=12 & Year <= 19) %>% 
+  mutate(Year = ifelse(Year < 20, paste0("20", Year), Year)) %>% 
+  janitor::clean_names()
+
+#combine SST and GRMR data
+SST_GRMR_month <- dplyr::full_join(GRMR_conch_catch_2004_2018_tidy, SST_monthly_2012_2019, by = c("month", "year"))
+
+#linear regression for hours fished predicted by SST, month and year
+lm_hours_fished_SST_month_year <- lm(hours_fished ~ avg_temp + factor(month) + year, data = SST_GRMR_month)
+summary(lm_hours_fished_SST_month_year)
+
+#lr for hours fished predicted by SST
+lm_hours_fished_SST <- lm(hours_fished ~ avg_temp, data = SST_GRMR_month)
+summary(lm_hours_fished_SST)
+
+
+
+
+```
+
+
+NEW CONCH DATA - GRMR CONCH
+```{r}
+
+#load in catch data
+GRMR_conch_catch_2004_2018 <- read_excel("/Users/Vanessa/Dropbox/CAPA/Data/Fisheries/Catch_data/conch_NEW/GRMR Conch CPUE Data 2012-2019 20200102MP.xlsx")
+head(GRMR_conch_catch_2004_2018)
+
+#Isolate the location, weight and hours fished
+GRMR_conch_catch_2004_2018_tidy <- GRMR_conch_catch_2004_2018 %>%
+  janitor::clean_names() %>%
+  dplyr::select(sort, date, month, year, location, weight_g, hours_fished) %>%
+  mutate(month = case_when(
+    month == "January" ~ "Jan",
+    month == "February" ~ "Feb",
+    month == "March" ~ "Mar",
+    month == "April" ~ "Apr",
+    month == "May" ~ "May",
+    month == "June" ~ "Jun",
+    month == "July" ~ "Jul",
+    month == "August" ~ "Aug",
+    month == "September" ~ "Sep",
+    month == "October" ~ "Oct",
+    month == "November" ~ "Nov",
+    month == "December" ~ "Dec",
+    TRUE ~ month  # Default case: keeps the original value if no match
+  )) %>%
+  group_by(month, year) %>%  # Group data by the "month" column
+  summarize(weight_g = sum(weight_g, na.rm = T),
+            hours_fished = sum(hours_fished, na.rm = T))
+
+month_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+GRMR_conch_catch_2004_2018_tidy <- arrange(GRMR_conch_catch_2004_2018_tidy, year, factor(month, levels = month_order))
+
+
+#GRMR conch effort
+GRMR_conch_NEW <- GRMR_conch_catch_2004_2018_tidy %>%
+  dplyr::select(sort, date, month, year, location, weight_g, hours_fished) %>%
+  group_by(year)%>%
+  summarize(
+    mean_weight = mean(weight_g, na.rm = TRUE),
+    mean_effort = mean(hours_fished, na.rm = TRUE)
+  )
+
+# Perform linear regression
+lm_model <- lm(mean_weight ~ mean_effort, data = GRMR_conch_NEW)
+summary(lm_model)
+plot(lm_model)
+
+#make a scatter plot with a linear regression line
+GRMR_conch_scatter_plot_NEW <- ggplot(GRMR_conch_NEW, aes(x = mean_effort, y = mean_weight, label = Year)) +
+  geom_point() +
+  geom_text(vjust = -0.5, hjust = 0.5, size = 3) + 
+  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "red") +
+  labs(
+    x = "Average Hours Fished",
+    y = "Average Weight (g)",
+    title = "GRMR Conch Weight and Effort by Year (2012-2019)"
+  )
+
+# Display the scatter plot
+print(GRMR_conch_scatter_plot_NEW)
+
+
+#bar chart of weight by effort by year
+GRMR_conch_weight_effort_NEW <- GRMR_conch_catch_2004_2018_tidy %>% 
+  group_by(year)%>%
+  summarize(
+    sum_weight = sum(weight_g, na.rm = TRUE),
+    sum_effort = sum(hours_fished, na.rm = TRUE)
+  ) %>%
+  mutate(efficiency = sum_weight/sum_effort)
+
+# Convert "Year" to a factor
+GRMR_conch_weight_effort_NEW$year <- as.factor(GRMR_conch_weight_effort_NEW$year)
+
+# Calculate the regression results
+lm_model <- lm(efficiency ~ as.numeric(year), data = GRMR_conch_weight_effort_NEW)
+
+# Choose colors from the 'Set2' palette with 9 distinct colors
+national_parks_palette <- brewer.pal(12, "Set3")[1:9]
+
+
+# Create a bar chart of efficiency by year with bars colored by year
+GRMR_conch_bar_plot_NEW <- ggplot(GRMR_conch_weight_effort_NEW, aes(x = year, y = efficiency, fill = year)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Year",
+    y = "Total fish weight(g) per hour fished",
+    title = "GRMR Conch Catch Efficiency by Year (2012-2019)"
+  ) +
+  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "red") +
+  geom_text(aes(label = round(efficiency, 2)), vjust = -0.5, hjust = 0.5, size = 4)+
+  #scale_fill_manual(values = national_parks_palette) +
+  scale_y_continuous(expand = c(0,0),
+                     lim = c(0, 50),
+                     breaks = c(0, 10, 20, 30, 40, 50)) +
+  guides(fill = FALSE)
+
+# Display the bar chart
+print(GRMR_conch_bar_plot_NEW)
+
+
+
+```
+
+NEW CONCH DATA - SWCMR CONCH
+```{r}
+
+#load in catch data
+SWCMR_conch_catch_2004_2018 <- read_excel("/Users/Vanessa/Dropbox/CAPA/Data/Fisheries/Catch_data/conch_NEW/SWCMR Conch CPUE 2004-2018 20200102MP.xlsx")
+head(SWCMR_conch_catch_2004_2018)
+
+#Isolate the location, weight and hours fished
+SWCMR_conch_catch_2004_2018_tidy <- SWCMR_conch_catch_2004_2018 %>% 
+  janitor::clean_names() %>% 
+  filter(year != "Unknown") %>% 
+  filter(year != "2018")
+
+nan_values <- SWCMR_conch_catch_2004_2018_tidy$weight_g[is.nan(SWCMR_conch_catch_2004_2018_tidy$weight_g)]
+print(nan_values)
+
+SWCMR_conch_NEW <- SWCMR_conch_catch_2004_2018_tidy %>% 
+  dplyr::select(sort, date, month, year, location, weight_g, hours_fished) %>%
+  group_by(year)%>%
+  summarize(
+    mean_weight = mean(weight_g, na.rm = TRUE),
+    mean_effort = mean(hours_fished, na.rm = TRUE)
+  )
+
+# Perform linear regression
+lm_model <- lm(mean_weight ~ mean_effort, data = SWCMR_conch_NEW)
+summary(lm_model)
+plot(lm_model)
+
+#make a scatter plot with a linear regression line
+SWCMR_conch_scatter_plot_NEW <- ggplot(SWCMR_conch_NEW, aes(x = mean_effort, y = mean_weight, label = Year)) +
+  geom_point() +
+  geom_text(vjust = -0.5, hjust = 0.5, size = 3) + 
+  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "red") +
+  labs(
+    x = "Average Hours Fished",
+    y = "Average Weight (g)",
+    title = "SWCMR Conch Weight and Effort by Year (2012-2019)"
+  )
+
+# Display the scatter plot
+print(SWCMR_conch_scatter_plot_NEW)
+
+
+#bar chart of weight by effort by year
+SWCMR_conch_weight_effort_NEW <- SWCMR_conch_catch_2004_2018_tidy %>% 
+  group_by(year)%>%
+  summarize(
+    sum_weight = sum(weight_g, na.rm = TRUE),
+    sum_effort = sum(hours_fished, na.rm = TRUE)
+  ) %>%
+  mutate(efficiency = sum_weight/sum_effort)
+
+# Convert "Year" to a factor
+SWCMR_conch_weight_effort_NEW$year <- as.factor(SWCMR_conch_weight_effort_NEW$year)
+
+# Calculate the regression results
+lm_model <- lm(efficiency ~ as.numeric(year), data = SWCMR_conch_weight_effort_NEW)
+
+# Choose colors from the 'Set2' palette with 9 distinct colors
+national_parks_palette <- brewer.pal(12, "Set3")[1:9]
+
+
+# Create a bar chart of efficiency by year with bars colored by year
+SWCMR_conch_bar_plot_NEW <- ggplot(SWCMR_conch_weight_effort_NEW, aes(x = year, y = efficiency, fill = year)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Year",
+    y = "Total fish weight(g) per hour fished",
+    title = "SWCMR Conch Catch Efficiency by Year (2012-2019)"
+  ) +
+  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "red") +
+  geom_text(aes(label = round(efficiency, 2)), vjust = -0.5, hjust = 0.5, size = 4)+
+  #scale_fill_manual(values = national_parks_palette) +
+  scale_y_continuous(expand = c(0,0),
+                     lim = c(0, 50),
+                     breaks = c(0, 10, 20, 30, 40, 50)) +
+  guides(fill = FALSE)
+
+# Display the bar chart
+plot(SWCMR_conch_bar_plot_NEW)
+plot(GRMR_conch_bar_plot_NEW)
+
+
+
+```
