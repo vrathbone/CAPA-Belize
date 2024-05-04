@@ -345,7 +345,7 @@ head(GRMR_conch_catch_2004_2018)
 #Isolate the location, weight and hours fished
 GRMR_conch_catch_2004_2018_tidy <- GRMR_conch_catch_2004_2018 %>%
   janitor::clean_names() %>%
-  dplyr::select(sort, date, month, year, location, weight_g, hours_fished) %>%
+  dplyr::select(sort, date, month, year, boat_name, fisherman, location, weight_g, hours_fished) %>%
   mutate(month = case_when(
     month == "January" ~ "Jan",
     month == "February" ~ "Feb",
@@ -363,7 +363,8 @@ GRMR_conch_catch_2004_2018_tidy <- GRMR_conch_catch_2004_2018 %>%
   )) %>%
   group_by(month, year) %>%  # Group data by the "month" column
   summarize(weight_g = sum(weight_g, na.rm = T),
-            hours_fished = sum(hours_fished, na.rm = T))
+            hours_fished = hours_fished) %>% 
+  group_by(fisherman, month, year)
 
 month_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 GRMR_conch_catch_2004_2018_tidy <- arrange(GRMR_conch_catch_2004_2018_tidy, year, factor(month, levels = month_order))
